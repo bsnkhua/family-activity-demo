@@ -1,5 +1,9 @@
+const path = require('path');
+const fs = require('fs');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
+const Anthropic = require('@anthropic-ai/sdk');
 
 const app = express();
 const PORT = 3001;
@@ -7,46 +11,88 @@ const PORT = 3001;
 app.use(cors({ origin: 'http://localhost:5173' }));
 app.use(express.json());
 
-const DUMMY_ACTIVITIES = [
-  {
-    emoji: '🚂',
-    title: 'Muni Heritage Weekend - Sunday 10am-4pm',
-    description: 'A special event where families can ride vintage transit vehicles that are rarely seen on San Francisco streets, including vintage buses and the Blackpool Boat Tram. All rides on these special streetcars are FREE all weekend.',
-    venue: 'San Francisco Railway Museum',
-    distance: '0.5 miles',
-  },
-  {
-    emoji: '🇬🇷',
-    title: 'Greek Food Festival - Sunday 11am-8pm',
-    description: 'The annual Greek Food Festival features delicious traditional food like Spanakopita and Moussaka, plus desserts and Greek wine. Visitors can enjoy classic Greek music, watch award-winning folk dance groups perform, and browse unique gifts from local vendors.',
-    venue: 'Mission District',
-    distance: '1.2 miles',
-  },
-  {
-    emoji: '🎨',
-    title: 'Sunday Funnies Exhibit - Sunday 10am-5pm',
-    description: "The Cartoon Art Museum's 40th anniversary showcase features classic comic strips from the dawn of the comics medium to the present day, including works from legendary cartoonists like Charles M. Schulz (Peanuts) and contemporary classics like Phoebe and Her Unicorn.",
-    venue: 'Cartoon Art Museum',
-    distance: '2 miles',
-  },
-  {
-    emoji: '💃',
-    title: 'Lindy in the Park Dance Party - Sunday 11am-2pm',
-    description: 'A weekly free swing dance event near the de Young Museum when the streets of Golden Gate Park are closed to traffic. Get ready to swing in Golden Gate Park every sunny Sunday at this family-friendly dance gathering.',
-    venue: 'Golden Gate Park',
-    distance: '3.1 miles',
-  },
-  {
-    emoji: '🦁',
-    title: 'San Francisco Zoo — Keeper Talk Series',
-    description: 'Join zookeepers for up-close animal encounters and educational talks throughout the day. Kids can meet the big cats, penguins, and lemurs while learning about conservation efforts. Timed entry tickets are available online in advance.',
-    venue: 'San Francisco Zoo',
-    distance: '4.8 miles',
-  },
-];
+// Read and parse prompt.md at startup
+const promptMd = fs.readFileSync(path.join(__dirname, '..', 'prompt.md'), 'utf-8');
 
-app.post('/api/activities', (req, res) => {
-  res.json(DUMMY_ACTIVITIES);
+// Extract system prompt (text after "## System Prompt" heading, up to next heading)
+const systemMatch = promptMd.match(/## System Prompt\n\n([\s\S]+?)(?=\n## )/);
+const SYSTEM_PROMPT = systemMatch ? systemMatch[1].trim() : '';
+
+// Extract user prompt template (content inside the fenced code block)
+const userTemplateMatch = promptMd.match(/## User Prompt Template\n\n```\n([\s\S]+?)\n```/);
+const USER_PROMPT_TEMPLATE = userTemplateMatch ? userTemplateMatch[1].trim() : '';
+
+// Build interpolated prompt; omit preferences lines when field is empty
+function buildUserPrompt({ city, kids_ages, availability, miles, preferences }) {
+  let prompt = USER_PROMPT_TEMPLATE
+    .replace(/\{\{city\}\}/g, city)
+    .replace(/\{\{kids_ages\}\}/g, kids_ages)
+    .replace(/\{\{availability\}\}/g, availability)
+    .replace(/\{\{miles\}\}/g, miles);
+
+  if (!preferences || preferences.trim() === '') {
+    prompt = prompt
+      .replace(/^- Preferences:.*\n?/m, '')
+      .replace(/^- If preferences are provided.*\n?/m, '');
+  } else {
+    prompt = prompt.replace(/\{\{preferences\}\}/g, preferences);
+  }
+
+  return prompt;
+}
+
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+app.post('/api/activities', async (req, res) => {
+  const { city, kidsAges, availability, miles, preferences } = req.body;
+
+  try {
+    const userPrompt = buildUserPrompt({
+      city,
+      kids_ages: kidsAges,
+      availability,
+      miles,
+      preferences,
+    });
+
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2048,
+      system: SYSTEM_PROMPT,
+      tools: [
+        {
+          type: 'web_search_20250305',
+          name: 'web_search',
+          max_uses: 3,
+          user_location: {
+            type: 'approximate',
+            city: city,
+          },
+        },
+      ],
+      messages: [{ role: 'user', content: userPrompt }],
+    });
+
+    // Find the final text block in the response
+    const textBlock = response.content.find(block => block.type === 'text');
+    if (!textBlock) {
+      throw new Error('No text response from Claude');
+    }
+
+    // Extract the JSON array — Claude sometimes adds prose before or after it
+    const rawText = textBlock.text;
+    const arrayMatch = rawText.match(/\[[\s\S]*\]/);
+    if (!arrayMatch) {
+      console.error('Claude response did not contain a JSON array:\n', rawText);
+      throw new Error('Claude did not return a JSON array. Try submitting again.');
+    }
+
+    const activities = JSON.parse(arrayMatch[0]);
+    res.json(activities);
+  } catch (error) {
+    console.error('Error calling Claude API:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch activities' });
+  }
 });
 
 app.listen(PORT, () => {

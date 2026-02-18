@@ -43,23 +43,23 @@
 
 ---
 
-# Milestone 2 — Connect Claude API with Web Search
+# Milestone 2 — Connect Claude API with Web Search ✅
 
 ## Server
 
-- [ ] Install `@anthropic-ai/sdk` in `/server`
-- [ ] Add `ANTHROPIC_API_KEY` to a `.env` file and load it with `dotenv`
-- [ ] Read system prompt and user prompt template from `prompt.md` at startup
-- [ ] Build prompt interpolation helper: replace `{{city}}`, `{{kids_ages}}`, `{{availability}}`, `{{miles}}`, `{{preferences}}` with request body values; omit preferences clause if field is empty
-- [ ] Replace hardcoded dummy data in `POST /api/activities` with a `client.messages.create()` call:
+- [x] Install `@anthropic-ai/sdk` in `/server`
+- [x] Add `ANTHROPIC_API_KEY` to a `.env` file and load it with `dotenv`
+- [x] Read system prompt and user prompt template from `prompt.md` at startup
+- [x] Build prompt interpolation helper: replace `{{city}}`, `{{kids_ages}}`, `{{availability}}`, `{{miles}}`, `{{preferences}}` with request body values; omit preferences clause if field is empty
+- [x] Replace hardcoded dummy data in `POST /api/activities` with a `client.messages.create()` call:
   - Model: `claude-sonnet-4-5-20250929`
   - Web search tool: `{ type: "web_search_20250305", name: "web_search", max_uses: 3, user_location: { type: "approximate", city } }`
   - System prompt + interpolated user prompt from `prompt.md`
-- [ ] Parse the JSON array from Claude's text response (strip any markdown fences if present)
-- [ ] Return parsed array to client; return HTTP 500 with error message on failure
+- [x] Parse the JSON array from Claude's text response (strip any markdown fences if present)
+- [x] Return parsed array to client; return HTTP 500 with error message on failure
 
 ## Verify
 
-- [ ] Submit the form with real values (e.g. city: Austin TX, ages: 6 and 9, Saturday afternoon, 20 miles)
-- [ ] Confirm 5 cards render with real activity titles, venues, and distances
-- [ ] Confirm each card has an emoji, bold title, 2–4 sentence description, and metadata row
+- [x] Submit the form with real values (e.g. city: Austin TX, ages: 6 and 9, Saturday afternoon, 20 miles)
+- [x] Confirm 5 cards render with real activity titles, venues, and distances
+- [x] Confirm each card has an emoji, bold title, 2–4 sentence description, and metadata row

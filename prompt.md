@@ -25,7 +25,8 @@ Return a JSON array of exactly 5 activity objects. No markdown, no explanation �
 [
   {
     "emoji": "<single relevant emoji>",
-    "title": "<Activity Name — include day/time if known, e.g. 'Nature Walk - Saturday 9am'>",
+    "title": "<Activity Name only, no date or time>",
+    "date": "<Full date and time with month and day, e.g. 'Sat, Feb 22 · 10am–4pm' or 'Sat, Feb 22 · 2pm'; use 'Ongoing / open weekends' for permanent venues with no fixed event date>",
     "description": "<2–4 sentences: what it is, why it suits kids aged {{kids_ages}}, any practical tips such as cost, parking, or booking>",
     "venue": "<venue or neighborhood name>",
     "distance": "<estimated miles from city center, e.g. '2.4 miles'>"

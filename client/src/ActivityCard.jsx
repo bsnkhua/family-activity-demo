@@ -1,5 +1,5 @@
 export default function ActivityCard({ activity, rank }) {
-  const { emoji, title, description, venue, distance } = activity;
+  const { emoji, title, date, description, venue, distance } = activity;
 
   return (
     <div className="card">
@@ -10,8 +10,9 @@ export default function ActivityCard({ activity, rank }) {
       <div className="card-right">
         <h3 className="card-title">{title}</h3>
         <p className="card-description">{description}</p>
-        {(venue || distance) && (
+        {(date || venue || distance) && (
           <div className="card-meta">
+            {date && <span>📅 {date}</span>}
             {venue && <span>📍 {venue}</span>}
             {distance && <span>🚗 {distance}</span>}
           </div>
